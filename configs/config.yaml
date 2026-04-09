@@ -1,0 +1,57 @@
+paths:
+  iemocap_root: "data_raw/IEMOCAP/IEMOCAP_full_release"
+  meld_root: "data_raw/MELD/MELD"
+  features_dir: "features"
+  data_dir: "data"
+  results_dir: "results"
+
+features:
+  egemaps_version: "eGeMAPSv01a"
+  wav2vec2_model: "facebook/wav2vec2-base-960h"
+  wav2vec2_pooling: "mean"
+  bert_model: "bert-base-uncased"
+  bert_reduce_dim: 378
+  sample_rate: 16000
+
+data:
+  num_context_turns: 6
+  label_map:
+    happy: 0
+    excited: 0
+    anger: 1
+    angry: 1
+    neutral: 2
+    sad: 3
+    sadness: 3
+    joy: 0
+    disgust: -1
+    fear: -1
+    surprise: -1
+  exclude_labels: [-1]
+  train_val_split: 0.8
+
+model:
+  gru_hidden_size: 256
+  gru_num_layers: 2
+  gru_dropout: 0.5
+  attention_dim: 256
+
+training:
+  batch_size: 32
+  max_epochs: 50
+  learning_rate: 0.0001
+  patience: 10
+  use_class_weights: true
+
+execution:
+  seed: 42
+  device: "cuda"
+  num_workers: 4
+
+modality:
+  audio_dim: 856
+  text_dim: 378
+  multimodal_dim: 1234
+
+emotion_labels: ["Happy", "Anger", "Neutral", "Sad"]
+num_classes: 4
