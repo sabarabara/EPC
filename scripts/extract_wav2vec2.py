@@ -9,13 +9,16 @@ from transformers import Wav2Vec2Model, Wav2Vec2Processor
 import glob
 
 
+import librosa
 def load_audio(wav_path: str, target_sr: int = 16000) -> torch.Tensor:
-    waveform, sr = torchaudio.load(wav_path)
-    if sr != target_sr:
-        waveform = torchaudio.transforms.Resample(sr, target_sr)(waveform)
-    if waveform.shape[0] > 1:
-        waveform = waveform.mean(dim=0, keepdim=True)
-    return waveform.squeeze(0)
+    try:
+        import warnings
+        warnings.filterwarnings("ignore")
+        y, _ = librosa.load(wav_path, sr=target_sr, mono=True)
+        return torch.tensor(y, dtype=torch.float32)
+    except Exception as e:
+        print(f"Warning: Failed to load {wav_path}: {e}")
+        return torch.zeros(target_sr, dtype=torch.float32)
 
 
 def extract_wav2vec2_features(model, processor, wav_path: str, device) -> torch.Tensor:
@@ -67,10 +70,8 @@ def main():
         )
     else:
         wav_files = sorted(
-            glob.glob(
-                os.path.join(config["paths"]["meld_root"], "**", "*.wav"),
-                recursive=True,
-            )
+            glob.glob(os.path.join(config["paths"]["meld_root"], "**", "*.wav"), recursive=True) + 
+            glob.glob(os.path.join(config["paths"]["meld_root"], "**", "*.mp4"), recursive=True)
         )
 
     print(f"Found {len(wav_files)} audio files")

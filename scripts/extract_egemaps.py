@@ -10,52 +10,33 @@ import tempfile
 import glob
 
 
+import librosa
 def resample_audio(wav_path: str, target_sr: int = 16000) -> torch.Tensor:
-    waveform, sr = torchaudio.load(wav_path)
-    if sr != target_sr:
-        waveform = torchaudio.transforms.Resample(sr, target_sr)(waveform)
-    if waveform.shape[0] > 1:
-        waveform = waveform.mean(dim=0, keepdim=True)
-    return waveform
+    y, _ = librosa.load(wav_path, sr=target_sr, mono=True)
+    return torch.tensor(y, dtype=torch.float32).unsqueeze(0)
 
+
+import opensmile
 
 def extract_egemaps_with_opensmile(
     wav_path: str, config_name: str = "eGeMAPSv01a"
 ) -> np.ndarray:
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-        tmp_wav = tmp.name
-
-    waveform = resample_audio(wav_path)
-    torchaudio.save(tmp_wav, waveform, 16000)
-
     try:
-        result = subprocess.run(
-            [
-                "SMILExtract",
-                "-C",
-                f"config/{config_name}.conf",
-                "-I",
-                tmp_wav,
-                "-csvoutput",
-                "stdout",
-                "-noconsoleoutput",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30,
+        import warnings
+        warnings.filterwarnings("ignore")
+        smile = opensmile.Smile(
+            feature_set=opensmile.FeatureSet.eGeMAPSv01a,
+            feature_level=opensmile.FeatureLevel.Functionals,
         )
-        lines = result.stdout.strip().split("\n")
-        if len(lines) > 1:
-            values = lines[-1].split(";")[1:]
-            features = np.array([float(v) for v in values if v != ""])
-            return features
+        y, sr = librosa.load(wav_path, sr=16000, mono=True)
+        # Handle empty/short audio preventing crash
+        if len(y) == 0:
+            return np.zeros(88, dtype=np.float32)
+        features = smile.process_signal(y, sr)
+        return features.iloc[0].values.astype(np.float32)
     except Exception as e:
-        print(f"Error extracting {wav_path}: {e}")
-    finally:
-        if os.path.exists(tmp_wav):
-            os.unlink(tmp_wav)
-
-    return np.zeros(88)
+        print(f"Warning: Failed to load {wav_path}: {e}")
+        return np.zeros(88, dtype=np.float32)
 
 
 def main():
@@ -84,10 +65,8 @@ def main():
         )
     else:
         wav_files = sorted(
-            glob.glob(
-                os.path.join(config["paths"]["meld_root"], "**", "*.wav"),
-                recursive=True,
-            )
+            glob.glob(os.path.join(config["paths"]["meld_root"], "**", "*.wav"), recursive=True) + 
+            glob.glob(os.path.join(config["paths"]["meld_root"], "**", "*.mp4"), recursive=True)
         )
 
     print(f"Found {len(wav_files)} audio files")

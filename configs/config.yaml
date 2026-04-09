@@ -1,6 +1,6 @@
 paths:
   iemocap_root: "data_raw/IEMOCAP/IEMOCAP_full_release"
-  meld_root: "data_raw/MELD/MELD"
+  meld_root: "data_raw/MELD"
   features_dir: "features"
   data_dir: "data"
   results_dir: "results"

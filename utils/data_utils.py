@@ -219,7 +219,7 @@ def build_context_sequences(utterances: list, num_context_turns: int = 6) -> lis
     """
     dialogs = defaultdict(list)
     for utt in utterances:
-        dialogs[utt["dialog"]].append(utt)
+        dialogs[utt.get("dialog", utt.get("dialog_id"))].append(utt)
 
     sequences = []
     for dialog_id, dialog_utts in dialogs.items():
@@ -309,7 +309,7 @@ def get_meld_utterances(meld_root: str, label_map: dict, exclude_labels: list) -
     """
     splits = {}
     for split in ["train", "dev", "test"]:
-        csv_path = os.path.join(meld_root, split, f"{split}_sent_emo.csv")
+        csv_path = os.path.join(meld_root, f"{split}_sent_emo.csv")
         if not os.path.exists(csv_path):
             print(f"Warning: {csv_path} not found, skipping {split}")
             continue
@@ -327,7 +327,7 @@ def get_meld_utterances(meld_root: str, label_map: dict, exclude_labels: list) -
 
             utterances.append(
                 {
-                    "utt_id": f"{row['Dialogue_ID']}_{row['Utterance_ID']}",
+                    "utt_id": f"dia{row['Dialogue_ID']}_utt{row['Utterance_ID']}",
                     "dialog_id": str(row["Dialogue_ID"]),
                     "speaker": row["Speaker"].strip(),
                     "emotion": label,

@@ -8,6 +8,8 @@ from tqdm import tqdm
 from sklearn.decomposition import PCA
 
 
+from transformers import BertTokenizer, BertModel
+
 def extract_bert_features_with_service(
     texts: list,
     utt_ids: list,
@@ -15,20 +17,18 @@ def extract_bert_features_with_service(
     port: int = 5555,
     port_out: int = 5556,
 ) -> dict:
-    """bert-as-serviceを使ってBERT特徴量を抽出
-
-    事前に以下のコマンドでBERTサーバーを起動しておく必要がある:
-        bert-serving-start -model_name bert-base-uncased -port 5555 -port_out 5556
-    """
-    from bert_serving.client import BertClient
-
-    bc = BertClient(ip="localhost", port=port, port_out=port_out)
-    features_list = bc.encode(texts)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    tokenizer = BertTokenizer.from_pretrained(model_name)
+    model = BertModel.from_pretrained(model_name).to(device)
+    model.eval()
 
     features = {}
-    for utt_id, feat in zip(utt_ids, features_list):
-        features[utt_id] = torch.tensor(feat, dtype=torch.float32)
-
+    with torch.no_grad():
+        for utt_id, text in zip(tqdm(utt_ids, desc="Extracting BERT"), texts):
+            inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512).to(device)
+            outputs = model(**inputs)
+            cls_feat = outputs.last_hidden_state[:, 0, :].squeeze(0).cpu()
+            features[utt_id] = cls_feat
     return features
 
 
